@@ -1,6 +1,8 @@
 name: Welcome Newcomers
 
 on:
+  push:
+    branches: [main]
   issues:
     types: [opened]
   pull_request:
@@ -11,12 +13,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Greet newcomers
+      - name: Handle push, issue, and PR events
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const event = context.eventName;
+
+            if (event === 'push') {
+              console.log("🎉 Code pushed to main! Thank you for your contribution.");
+              // Avoid commit comment API to prevent 403 error
+            }
 
             if (event === 'issues') {
               await github.rest.issues.createComment({
