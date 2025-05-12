@@ -1,8 +1,6 @@
 name: Welcome Newcomers
 
 on:
-  push:
-    branches: [main]
   issues:
     types: [opened]
   pull_request:
@@ -13,33 +11,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check GITHUB_TOKEN is available
-        run: |
-          if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
-            echo "❌ GITHUB_TOKEN is not available."
-            exit 1
-          else
-            echo "✅ GITHUB_TOKEN is set and ready to use."
-          fi
-
       - name: Greet newcomers
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const event = context.eventName;
-
-            if (event === 'push') {
-              const commits = context.payload.commits || [];
-              for (const commit of commits) {
-                await github.rest.repos.createCommitComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  commit_sha: commit.id,
-                  body: '🎉 Thank you for your contribution to the `main` branch!'
-                });
-              }
-            }
 
             if (event === 'issues') {
               await github.rest.issues.createComment({
