@@ -10,29 +10,68 @@ on:
       - main
 
 jobs:
-  welcome:
+  welcome-on-issue-or-pr:
+    if: github.event_name == 'issues' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Check if first-time contributor
+      - name: Send welcome message
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.TOKEN }}
+          script: |
+            const actor = context.actor;
+            const isPR = context.eventName === 'pull_request';
+
+            const message = isPR
+              ? `🎉 Hi @${actor}! Thank you for your first pull request. We’ll review it shortly.`
+              : `👋 Hello @${actor}! Thanks for opening your first issue. We appreciate your contribution!`;
+
+            const params = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.number,
+              body: message
+            };
+
+            await github.rest.issues.createComment(params);
+
+  welcome-on-push:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get username
+        id: extract
+        run: echo "username=${GITHUB_ACTOR}" >> $GITHUB_OUTPUT
+
+      - name: Check if first commit by user
         id: check
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.TOKEN }}
           script: |
-            const username = context.payload.pusher.name;
+            const username = '${{ steps.extract.outputs.username }}';
+            const commits = await github.paginate(
+              github.rest.repos.listCommits,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                author: username
+              }
+            );
 
-            const commits = await github.rest.repos.listCommits({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              author: username
-            });
-
-            const isFirstContribution = commits.data.length <= 1;
-
-            core.setOutput("isFirst", isFirstContribution);
+            const isFirst = commits.length <= 1;
+            core.setOutput("isFirst", isFirst);
             core.setOutput("username", username);
 
-      - name: Welcome first-time commit contributor
+      - name: Create welcome issue
         if: steps.check.outputs.isFirst == 'true'
-        run: |
-          echo "👋 Welcome @${{ steps.check.outputs.username }} to the repository! 🎉 Thanks for your first commit to the main branch."
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.TOKEN }}
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🎉 Welcome @${{ steps.check.outputs.username }} to the repository!`,
+              body: `Hi @${{ steps.check.outputs.username }}! 🎉\n\nThank you for making your first commit to the \`main\` branch. We appreciate your contribution and look forward to more from you. 🚀`,
+            });
