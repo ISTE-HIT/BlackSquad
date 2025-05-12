@@ -2,11 +2,11 @@ name: Welcome Newcomers
 
 on:
   push:
-    branches: [main]
+    branches: [main] # Trigger on push to main
   issues:
-    types: [opened]
+    types: [opened] # Trigger on issue creation
   pull_request:
-    types: [opened]
+    types: [opened] # Trigger when a PR is created
 
 jobs:
   welcome:
@@ -22,7 +22,6 @@ jobs:
 
             if (event === 'push') {
               console.log("🎉 Code pushed to main! Thank you for your contribution.");
-              // Avoid commit comment API to prevent 403 error
             }
 
             if (event === 'issues') {
