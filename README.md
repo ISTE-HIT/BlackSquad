@@ -1,1 +1,1 @@
-# BlackSquad 2k25
+# BlackSquad
