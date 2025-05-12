@@ -1,55 +1,51 @@
+# .github/workflows/welcome.yml
 name: Welcome Newcomers
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   issues:
     types: [opened]
   pull_request:
     types: [opened]
-    branches:
-      - main
 
 jobs:
   welcome:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Greet newcomers
+      - name: Post a welcome message
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.ACCESSTOKEN }}
           script: |
-            const eventName = context.eventName;
+            const event = context.eventName;
 
-            let message = '';
-
-            if (eventName === 'push') {
-              message = `🎉 Thank you for your contribution to the \`main\` branch! We appreciate your effort.`;
-              const commits = context.payload.commits;
+            if (event === 'push') {
+              const commits = context.payload.commits || [];
               for (const commit of commits) {
                 await github.rest.repos.createCommitComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   commit_sha: commit.id,
-                  body: message
+                  body: '🎉 Thank you for your contribution to the `main` branch!'
                 });
               }
-            } else if (eventName === 'issues') {
-              message = `👋 Thanks for opening this issue! We're glad you're here. The team will look into it shortly.`;
+            }
+
+            if (event === 'issues') {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: message
+                issue_number: context.payload.issue.number,
+                body: '👋 Thanks for opening this issue! We\'re happy to have you here.'
               });
-            } else if (eventName === 'pull_request') {
-              message = `🚀 Thanks for submitting this pull request to \`main\`! The team will review it soon.`;
+            }
+
+            if (event === 'pull_request') {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: message
+                issue_number: context.payload.pull_request.number,
+                body: '🚀 Thanks for submitting this pull request! We\'ll review it shortly.'
               });
             }
