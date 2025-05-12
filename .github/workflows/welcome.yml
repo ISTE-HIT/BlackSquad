@@ -1,0 +1,38 @@
+name: Welcome Contributor
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+  push:
+    branches:
+      - main
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if first-time contributor
+        id: check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const username = context.payload.pusher.name;
+
+            const commits = await github.rest.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              author: username
+            });
+
+            const isFirstContribution = commits.data.length <= 1;
+
+            core.setOutput("isFirst", isFirstContribution);
+            core.setOutput("username", username);
+
+      - name: Welcome first-time commit contributor
+        if: steps.check.outputs.isFirst == 'true'
+        run: |
+          echo "👋 Welcome @${{ steps.check.outputs.username }} to the repository! 🎉 Thanks for your first commit to the main branch."
