@@ -1,77 +1,82 @@
-name: Welcome Contributor
+name: Welcome First-Time Contributors
 
 on:
+  pull_request_target:
+    types:
+      - opened
   issues:
-    types: [opened]
-  pull_request:
-    types: [opened]
-  push:
-    branches:
-      - main
+    types:
+      - opened
 
 jobs:
-  welcome-on-issue-or-pr:
-    if: github.event_name == 'issues' || github.event_name == 'pull_request'
+  welcome:
+    name: Post Welcome Message
+    if: ${{ !contains(fromJson('["asyncapi-bot", "dependabot[bot]", "dependabot-preview[bot]", "allcontributors[bot]"]'), github.actor) }}
     runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+      pull-requests: write
+
     steps:
-      - name: Send welcome message
-        uses: actions/github-script@v7
+      - uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const actor = context.actor;
-            const isPR = context.eventName === 'pull_request';
+            const issueMessage = `👋 **Welcome to the project!**\n\nThanks for opening your first issue. Please check out our [contributing guide](https://github.com/OWNER/REPO/blob/master/CONTRIBUTING.md) and [Git workflow instructions](https://github.com/OWNER/REPO/blob/master/git-workflow.md).\n\nFeel free to reach out in the discussion forums or community channels!`;
+            const prMessage = `🎉 **Welcome, first-time contributor!**\n\nThanks for submitting your first pull request. Please take a moment to review our [contributing guide](https://github.com/OWNER/REPO/blob/master/CONTRIBUTING.md).\n\nWe appreciate your efforts and look forward to collaborating!`;
 
-            const message = isPR
-              ? `🎉 Hi @${actor}! Thank you for your first pull request. We’ll review it shortly.`
-              : `👋 Hello @${actor}! Thanks for opening your first issue. We appreciate your contribution!`;
+            const isIssue = !!context.payload.issue;
+            let isFirstContribution;
 
-            const params = {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.number,
-              body: message
-            };
+            if (isIssue) {
+              const query = `query($owner:String!, $name:String!, $contributor:String!) {
+                repository(owner:$owner, name:$name){
+                  issues(first: 1, filterBy: {createdBy:$contributor}) {
+                    totalCount
+                  }
+                }
+              }`;
+              const variables = {
+                owner: context.repo.owner,
+                name: context.repo.repo,
+                contributor: context.payload.sender.login
+              };
+              const { repository: { issues: { totalCount } } } = await github.graphql(query, variables);
+              isFirstContribution = totalCount === 1;
+            } else {
+              const query = `query($q: String!) {
+                search(query: $q, type: ISSUE, first: 1) {
+                  issueCount
+                }
+              }`;
+              const variables = {
+                q: `repo:${context.repo.owner}/${context.repo.repo} type:pr author:${context.payload.sender.login}`
+              };
+              const { search: { issueCount } } = await github.graphql(query, variables);
+              isFirstContribution = issueCount === 1;
+            }
 
-            await github.rest.issues.createComment(params);
+            if (!isFirstContribution) {
+              console.log("User has contributed before.");
+              return;
+            }
 
-  welcome-on-push:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get username
-        id: extract
-        run: echo "username=${GITHUB_ACTOR}" >> $GITHUB_OUTPUT
+            const message = isIssue ? issueMessage : prMessage;
 
-      - name: Check if first commit by user
-        id: check
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.TOKEN }}
-          script: |
-            const username = '${{ steps.extract.outputs.username }}';
-            const commits = await github.paginate(
-              github.rest.repos.listCommits,
-              {
+            if (isIssue) {
+              await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                author: username
-              }
-            );
-
-            const isFirst = commits.length <= 1;
-            core.setOutput("isFirst", isFirst);
-            core.setOutput("username", username);
-
-      - name: Create welcome issue
-        if: steps.check.outputs.isFirst == 'true'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.TOKEN }}
-          script: |
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `🎉 Welcome @${{ steps.check.outputs.username }} to the repository!`,
-              body: `Hi @${{ steps.check.outputs.username }}! 🎉\n\nThank you for making your first commit to the \`main\` branch. We appreciate your contribution and look forward to more from you. 🚀`,
-            });
+                issue_number: context.issue.number,
+                body: message
+              });
+            } else {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                body: message,
+                event: 'COMMENT'
+              });
+            }
