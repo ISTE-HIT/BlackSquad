@@ -1,27 +1,55 @@
 name: Welcome Newcomers
 
 on:
+  push:
+    branches:
+      - main
   issues:
     types: [opened]
   pull_request:
     types: [opened]
+    branches:
+      - main
 
 jobs:
   welcome:
     runs-on: ubuntu-latest
 
     steps:
-      # Ensure the ACCESS_TOKEN is set properly
-      - name: Check ACCESS_TOKEN
-        run: |
-          echo "ACCESS_TOKEN is set to: ${{ secrets.ACCESSTOKEN }}"
-        
-      - uses: actions/first-interaction@v1
+      - name: Greet newcomers
+        uses: actions/github-script@v7
         with:
-          repo-token: ${{ secrets.ACCESSTOKEN }}
-          issue-message: |
-            👋 Hello and welcome! Thank you for opening your first issue in this repo.
-            We're glad to have you here. Feel free to ask any questions or give feedback!
-          pr-message: |
-            🎉 Thanks for your first pull request! We're excited to review it.
-            Stay awesome and keep contributing!
+          github-token: ${{ secrets.ACCESSTOKEN }}
+          script: |
+            const eventName = context.eventName;
+
+            let message = '';
+
+            if (eventName === 'push') {
+              message = `🎉 Thank you for your contribution to the \`main\` branch! We appreciate your effort.`;
+              const commits = context.payload.commits;
+              for (const commit of commits) {
+                await github.rest.repos.createCommitComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: commit.id,
+                  body: message
+                });
+              }
+            } else if (eventName === 'issues') {
+              message = `👋 Thanks for opening this issue! We're glad you're here. The team will look into it shortly.`;
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: message
+              });
+            } else if (eventName === 'pull_request') {
+              message = `🚀 Thanks for submitting this pull request to \`main\`! The team will review it soon.`;
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: message
+              });
+            }
