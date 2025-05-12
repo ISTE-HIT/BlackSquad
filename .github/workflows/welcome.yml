@@ -1,4 +1,3 @@
-# .github/workflows/welcome.yml
 name: Welcome Newcomers
 
 on:
@@ -12,11 +11,21 @@ on:
 jobs:
   welcome:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Post a welcome message
+      - name: Check GITHUB_TOKEN is available
+        run: |
+          if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
+            echo "❌ GITHUB_TOKEN is not available."
+            exit 1
+          else
+            echo "✅ GITHUB_TOKEN is set and ready to use."
+          fi
+
+      - name: Greet newcomers
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.ACCESSTOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const event = context.eventName;
 
@@ -37,7 +46,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.payload.issue.number,
-                body: '👋 Thanks for opening this issue! We\'re happy to have you here.'
+                body: '👋 Thanks for opening this issue! We’re happy to have you here.'
               });
             }
 
@@ -46,6 +55,6 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.payload.pull_request.number,
-                body: '🚀 Thanks for submitting this pull request! We\'ll review it shortly.'
+                body: '🚀 Thanks for submitting this pull request! We’ll review it shortly.'
               });
             }
