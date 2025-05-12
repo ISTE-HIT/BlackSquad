@@ -1,82 +1,27 @@
-name: Welcome First-Time Contributors
+name: Welcome Newcomers
 
 on:
-  pull_request_target:
-    types:
-      - opened
   issues:
-    types:
-      - opened
+    types: [opened]
+  pull_request:
+    types: [opened]
 
 jobs:
   welcome:
-    name: Post Welcome Message
-    if: ${{ !contains(fromJson('["asyncapi-bot", "dependabot[bot]", "dependabot-preview[bot]", "allcontributors[bot]"]'), github.actor) }}
     runs-on: ubuntu-latest
 
-    permissions:
-      issues: write
-      pull-requests: write
-
     steps:
-      - uses: actions/github-script@v7
+      # Ensure the ACCESS_TOKEN is set properly
+      - name: Check ACCESS_TOKEN
+        run: |
+          echo "ACCESS_TOKEN is set to: ${{ secrets.ACCESSTOKEN }}"
+        
+      - uses: actions/first-interaction@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const issueMessage = `👋 **Welcome to the project!**\n\nThanks for opening your first issue. Please check out our [contributing guide](https://github.com/OWNER/REPO/blob/master/CONTRIBUTING.md) and [Git workflow instructions](https://github.com/OWNER/REPO/blob/master/git-workflow.md).\n\nFeel free to reach out in the discussion forums or community channels!`;
-            const prMessage = `🎉 **Welcome, first-time contributor!**\n\nThanks for submitting your first pull request. Please take a moment to review our [contributing guide](https://github.com/OWNER/REPO/blob/master/CONTRIBUTING.md).\n\nWe appreciate your efforts and look forward to collaborating!`;
-
-            const isIssue = !!context.payload.issue;
-            let isFirstContribution;
-
-            if (isIssue) {
-              const query = `query($owner:String!, $name:String!, $contributor:String!) {
-                repository(owner:$owner, name:$name){
-                  issues(first: 1, filterBy: {createdBy:$contributor}) {
-                    totalCount
-                  }
-                }
-              }`;
-              const variables = {
-                owner: context.repo.owner,
-                name: context.repo.repo,
-                contributor: context.payload.sender.login
-              };
-              const { repository: { issues: { totalCount } } } = await github.graphql(query, variables);
-              isFirstContribution = totalCount === 1;
-            } else {
-              const query = `query($q: String!) {
-                search(query: $q, type: ISSUE, first: 1) {
-                  issueCount
-                }
-              }`;
-              const variables = {
-                q: `repo:${context.repo.owner}/${context.repo.repo} type:pr author:${context.payload.sender.login}`
-              };
-              const { search: { issueCount } } = await github.graphql(query, variables);
-              isFirstContribution = issueCount === 1;
-            }
-
-            if (!isFirstContribution) {
-              console.log("User has contributed before.");
-              return;
-            }
-
-            const message = isIssue ? issueMessage : prMessage;
-
-            if (isIssue) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: message
-              });
-            } else {
-              await github.rest.pulls.createReview({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.payload.pull_request.number,
-                body: message,
-                event: 'COMMENT'
-              });
-            }
+          repo-token: ${{ secrets.ACCESSTOKEN }}
+          issue-message: |
+            👋 Hello and welcome! Thank you for opening your first issue in this repo.
+            We're glad to have you here. Feel free to ask any questions or give feedback!
+          pr-message: |
+            🎉 Thanks for your first pull request! We're excited to review it.
+            Stay awesome and keep contributing!
