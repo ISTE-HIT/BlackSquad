@@ -53,3 +53,5 @@ Welcome to the **BlackSquad** repository! This is the hub for ISTE HIT SC's tech
 - Focus areas include penetration testing, encryption, and intrusion detection/prevention systems.
 
 ## Getting Started
+
+Fork and pull
